@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Dashboard – KNN & Naïve Bayes | Phân Tích Dữ Liệu Hiện Đại</title>
+  <meta name="description" content="Bảng phân tích học máy tương tác – KNN và Naïve Bayes với dự đoán xác suất (predict_proba), hỗ trợ CSV, Excel, PDF, TXT.">
+  <!-- Google Fonts - Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS for Excel files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- PDF.js for PDF parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Floating Music Player Widget -->
+  <div class="music-player-container paused" id="music-player">
+    <div class="music-info-text">
+      <span class="music-status" id="music-status-text">Đang tắt</span>
+      <span class="music-title">Chiếc Khăn Gió Ấm</span>
+    </div>
+    <button class="music-toggle-btn" id="music-toggle" title="Bật/Tắt nhạc nền">
+      <i class="fa-solid fa-volume-xmark" id="music-icon"></i>
+    </button>
+    <audio id="bg-music" loop preload="auto">
+      <source src="https://archive.org/download/chiec-khan-gio-am-khanh-phuong-reply-90s-vol.-3-v.-a-playlist-nhac-cua-tui/Chi%E1%BA%BFc%20Kh%C4%83n%20Gi%C3%B3%20%E1%BA%A4m%20-%20Kh%C3%A1nh%20Ph%C6%B0%C6%A1ng%20-%20Reply%2090%27s%20%28Vol.%203%29%20-%20V.A%20-%20Playlist%20NhacCuaTui.mp3" type="audio/mp3">
+    </audio>
+  </div>
+
+  <!-- Selection Page (Màn hình chính chọn thuật toán) -->
+  <div id="selection-container" class="selection-screen">
+    <div class="selection-box">
+      <h1 class="selection-title">ML Dashboard 2026</h1>
+      <p class="selection-subtitle">Hệ thống phân tích &amp; dự báo học máy tương tác · KNN · Naïve Bayes · predict_proba</p>
+      <div class="selection-buttons">
+        <button id="btn-select-knn" class="btn-3d btn-knn">
+          <span class="btn-3d-inner">
+            <i class="fa-solid fa-chart-scatter"></i> KNN
+          </span>
+        </button>
+        <button id="btn-select-nb" class="btn-3d btn-nb">
+          <span class="btn-3d-inner">
+            <i class="fa-solid fa-atom"></i> Naïve Bayes
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KNN APP CONTAINER -->
+  <!-- KNN APP CONTAINER -->
+  <div id="knn-app-container" style="display: none;">
+
+    <!-- Main Application Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="btn-back" id="btn-back-knn"><i class="fa-solid fa-arrow-left"></i> Quay lại</button>
+        <div class="logo-icon"><i class="fa-solid fa-chart-scatter"></i></div>
+      <div class="brand">
+        <h1>KNN DYNAMIC DASHBOARD</h1>
+        <p class="subtitle">Aurora Glass 2026 · Dự đoán & Đánh giá mô hình KNN</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge" id="data-status-badge"><i class="fa-solid fa-database"></i> Chưa nạp dữ liệu</div>
+    </div>
+  </header>
+
+  <!-- Navigation Tab Buttons -->
+  <nav class="tab-navigation">
+    <button class="tab-btn active" data-tab="tab-predict">
+      <i class="fa-solid fa-calculator"></i> 1. DỰ ĐOÁN & TRỰC QUAN HÓA
+    </button>
+    <button class="tab-btn" data-tab="tab-evaluation">
+      <i class="fa-solid fa-gauge-high"></i> 2. ĐÁNH GIÁ MÔ HÌNH (TRAIN/TEST SPLIT)
+    </button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- PAGE 1: PREDICTION & VISUALIZATION -->
+    <div id="tab-predict" class="page-content active">
+      <div class="grid-three-cols">
+        
+        <!-- Column 1: Configs Sidebar -->
+        <section class="card sidebar-card">
+          <h2 class="section-title"><i class="fa-solid fa-file-import accent-color"></i> 1. Tải dữ liệu</h2>
+          
+          <!-- File selection -->
+          <div class="form-group">
+            <label class="custom-file-upload btn-primary">
+              <input type="file" id="file-input" accept=".csv, .xlsx, .xls, .pdf" style="display: none;">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Chọn File từ Máy Tính (CSV/XLS/PDF)
+            </label>
+            <div id="file-name-label" class="file-status">Chưa có dữ liệu nào được nạp</div>
+          </div>
+
+          <!-- Presets -->
+          <div class="form-group">
+            <label for="preset-select">Hoặc dùng dữ liệu mẫu:</label>
+            <div class="select-wrapper">
+              <select id="preset-select">
+                <option value="">--- Chọn dữ liệu mẫu ---</option>
+                <option value="iris">Iris Flower (Phân loại)</option>
+                <option value="wine">Wine Dataset (Phân loại)</option>
+                <option value="diabetes">Diabetes Dataset (Hồi quy)</option>
+                <option value="clusters">Synthetic Clusters 2D (Phân loại)</option>
+                <option value="regression">Synthetic Regression 2D (Hồi quy)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h2 class="section-title"><i class="fa-solid fa-sliders accent-color"></i> 2. Cấu hình KNN</h2>
+
+          <!-- Label target select -->
+          <div class="form-group">
+            <label for="target-select">Chọn Label cần dự đoán (Y):</label>
+            <div class="select-wrapper">
+              <select id="target-select" disabled>
+                <option value="">Nạp dữ liệu để chọn...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Feature checkbox checklist -->
+          <div class="form-group">
+            <label>Chọn các đặc trưng đầu vào (X):</label>
+            <div class="features-checklist-container" id="features-container">
+              <p class="empty-state">Vui lòng nạp dữ liệu...</p>
+            </div>
+          </div>
+
+          <!-- KNN parameters -->
+          <div class="params-grid">
+            <div class="form-group">
+              <label for="k-input">Số lân cận K:</label>
+              <input type="number" id="k-input" value="5" min="1" step="1">
+            </div>
+            
+            <div class="form-group">
+              <label for="metric-select">Thước đo k.cách:</label>
+              <div class="select-wrapper">
+                <select id="metric-select">
+                  <option value="Euclidean">Euclidean</option>
+                  <option value="Manhattan">Manhattan</option>
+                  <option value="Chebyshev">Chebyshev</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="weight-select">Trọng số k.cách:</label>
+              <div class="select-wrapper">
+                <select id="weight-select">
+                  <option value="Uniform">Uniform</option>
+                  <option value="Distance">Distance</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="scaling-select">Chuẩn hóa dữ liệu:</label>
+              <div class="select-wrapper">
+                <select id="scaling-select">
+                  <option value="None">None</option>
+                  <option value="Standard">Standard (Z-score)</option>
+                  <option value="MinMax">MinMax (0-1)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mode selection -->
+          <div class="form-group">
+            <label>Chế độ dự đoán:</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="mode-radio" value="Auto" checked>
+                <span>Auto</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="mode-radio" value="Classification">
+                <span>Phân loại</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="mode-radio" value="Regression">
+                <span>Hồi quy</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Column 2: Query Inputs & Results -->
+        <section class="card query-results-card">
+          <h2 class="section-title"><i class="fa-solid fa-keyboard accent-color"></i> 3. Nhập đầu vào cần dự đoán</h2>
+          <p class="click-tip"><i class="fa-solid fa-lightbulb"></i> Mẹo: Click chuột trực tiếp lên biểu đồ ở góc phải để chọn tọa độ nhanh!</p>
+          
+          <!-- Dynamic Input Form Container -->
+          <div class="query-inputs-wrapper" id="query-inputs-container">
+            <p class="empty-state">Chưa chọn Feature nào. Vui lòng chọn Feature ở cột 1.</p>
+          </div>
+
+          <!-- Action Button -->
+          <button id="btn-predict" class="btn-success btn-large" disabled>
+            <i class="fa-solid fa-play"></i> Bắt Đầu Dự Đoán (KNN Predict)
+          </button>
+
+          <!-- Result banner display -->
+          <div class="result-banner empty" id="result-banner">
+            <h3 id="result-title">Chưa có dự đoán</h3>
+            <p id="result-description">Nạp dữ liệu mẫu hoặc chọn file, cấu hình tham số đầu vào và click 'Dự đoán'.</p>
+          </div>
+
+          <!-- Neighbors Table -->
+          <h3 class="subsection-title">Danh sách K điểm lân cận gần nhất:</h3>
+          <div class="table-container small-table-container">
+            <table id="neighbors-table">
+              <thead>
+                <tr>
+                  <th>STT gốc</th>
+                  <th>Khoảng cách</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="2" class="text-center font-muted">Nạp dữ liệu và dự đoán để hiển thị...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Column 3: Visualization Plots -->
+        <section class="card visualizer-card">
+          <div class="visualizer-header">
+            <h2 class="section-title"><i class="fa-solid fa-chart-pie accent-color"></i> 4. Trực quan hóa dữ liệu (2D)</h2>
+            <div class="plot-axis-selectors" id="axis-selectors">
+              <div class="axis-group">
+                <label for="plot-x-select">Trục X:</label>
+                <div class="select-wrapper mini-select">
+                  <select id="plot-x-select" disabled></select>
+                </div>
+              </div>
+              <div class="axis-group">
+                <label for="plot-y-select">Trục Y:</label>
+                <div class="select-wrapper mini-select">
+                  <select id="plot-y-select" disabled></select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Inner Tab Group (Chart vs Raw Data Table) -->
+          <div class="visual-tabs">
+            <button class="visual-tab-btn active" data-visual-tab="visual-chart">
+              <i class="fa-solid fa-chart-scatter"></i> Biểu đồ phân bố
+            </button>
+            <button class="visual-tab-btn" data-visual-tab="visual-data">
+              <i class="fa-solid fa-table"></i> Bảng dữ liệu gốc
+            </button>
+          </div>
+
+          <!-- Chart Tab Pane -->
+          <div id="visual-chart" class="visual-tab-content active">
+            <div class="canvas-wrapper">
+              <canvas id="knn-scatter-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Data Grid Tab Pane -->
+          <div id="visual-data" class="visual-tab-content">
+            <div class="table-controls">
+              <input type="text" id="search-data" placeholder="Tìm kiếm giá trị trong bảng...">
+              <div id="data-pagination-info" class="pagination-info">Hiển thị 0/0 dòng</div>
+            </div>
+            <div class="table-container large-table-container">
+              <table id="raw-data-table">
+                <thead>
+                  <tr>
+                    <th>Chưa nạp dữ liệu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-center font-muted">Nhập dữ liệu để bắt đầu...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="card-footer" id="data-size-status">
+            Kích thước: 0 dòng x 0 cột
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- PAGE 2: MODEL EVALUATION -->
+    <div id="tab-evaluation" class="page-content">
+      <div class="grid-two-cols">
+        
+        <!-- Eval Left Pane: Split Config & Evaluation Output -->
+        <section class="card eval-left-card">
+          <h2 class="section-title"><i class="fa-solid fa-gauge accent-color"></i> Đánh giá hiệu năng mô hình</h2>
+          
+          <!-- Split ratio slider -->
+          <div class="form-group">
+            <div class="slider-header">
+              <label for="split-slider">Tỷ lệ chia tập huấn luyện (Train Split %):</label>
+              <span class="slider-val" id="split-val-label">80% Train / 20% Test</span>
+            </div>
+            <input type="range" id="split-slider" min="50" max="95" step="5" value="80" class="custom-slider">
+          </div>
+
+          <!-- Seed input -->
+          <div class="form-group inline-group">
+            <label for="seed-input">Số ngẫu nhiên (Random State seed):</label>
+            <input type="number" id="seed-input" value="42" style="width: 100px;">
+          </div>
+
+          <!-- Run Eval Button -->
+          <button id="btn-run-eval" class="btn-primary btn-large" disabled>
+            <i class="fa-solid fa-arrows-spin"></i> Chạy Đánh Giá (Train-Test Evaluation)
+          </button>
+
+          <div class="eval-status-message error" id="eval-status-msg">
+            Hãy nạp dữ liệu trước khi chạy đánh giá.
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Evaluation Scores cards -->
+          <h3 class="subsection-title">Các chỉ số đo lường hiệu năng:</h3>
+          <div class="metrics-cards-container" id="metrics-output-container">
+            <div class="empty-metrics-state">
+              <p><i class="fa-solid fa-hourglass-start fa-2x"></i></p>
+              <p>Chưa chạy đánh giá mô hình. Vui lòng bấm 'Chạy Đánh Giá' ở trên.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Eval Right Pane: Charts / Confusion Matrix -->
+        <section class="card eval-right-card">
+          <h2 class="section-title"><i class="fa-solid fa-chart-area accent-color"></i> Biểu đồ phân tích kết quả đánh giá</h2>
+          
+          <div class="eval-chart-wrapper" id="eval-chart-container">
+            <!-- If Classification: shows Confusion Matrix -->
+            <!-- If Regression: shows Actual vs Predicted Chart -->
+            <div class="canvas-wrapper" id="eval-canvas-parent">
+              <canvas id="eval-chart"></canvas>
+            </div>
+            <div id="confusion-matrix-wrapper" style="display: none;">
+              <!-- Dynamic HTML Confusion Matrix table will be populated here -->
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+  </div>
+
+  <!-- NAIVE BAYES APP CONTAINER -->
+  <div id="nb-app-container" style="display: none;">
+    <!-- Main Application Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="btn-back" id="btn-back-nb"><i class="fa-solid fa-arrow-left"></i> Quay lại</button>
+        <div class="logo-icon"><i class="fa-solid fa-square-root-variable"></i></div>
+        <div class="brand">
+          <h1>BẢNG PHÂN TÍCH & DỰ ĐOÁN NAÏVE BAYES DYNAMIC DASHBOARD</h1>
+          <p class="subtitle">Phiên bản Web 2.0 | Giao diện hiện đại & Đánh giá mô hình</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-badge" id="nb-data-status-badge"><i class="fa-solid fa-database"></i> Chưa nạp dữ liệu</div>
+      </div>
+    </header>
+
+    <!-- Navigation Tab Buttons -->
+    <nav class="tab-navigation">
+      <button class="tab-btn active" data-tab="nb-tab-predict">
+        <i class="fa-solid fa-calculator"></i> 1. DỰ ĐOÁN & TRỰC QUAN HÓA
+      </button>
+      <button class="tab-btn" data-tab="nb-tab-evaluation">
+        <i class="fa-solid fa-gauge-high"></i> 2. ĐÁNH GIÁ MÔ HÌNH (TRAIN/TEST SPLIT)
+      </button>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+
+      <!-- PAGE 1: PREDICTION & VISUALIZATION -->
+      <div id="nb-tab-predict" class="page-content active">
+        <div class="grid-three-cols">
+          
+          <!-- Column 1: Configs Sidebar -->
+          <section class="card sidebar-card">
+            <h2 class="section-title"><i class="fa-solid fa-file-import accent-color"></i> 1. Tải dữ liệu</h2>
+            
+            <!-- File selection -->
+            <div class="form-group">
+              <label class="custom-file-upload btn-primary">
+                <input type="file" id="nb-file-input" accept=".csv, .xlsx, .xls, .pdf, .txt" style="display: none;">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn File (CSV/XLS/PDF/<b>TXT</b>)
+              </label>
+              <div id="nb-file-name-label" class="file-status">Chưa có dữ liệu nào được nạp</div>
+            </div>
+
+            <!-- Presets -->
+            <div class="form-group">
+              <label for="nb-preset-select">Hoặc dùng dữ liệu mẫu:</label>
+              <div class="select-wrapper">
+                <select id="nb-preset-select">
+                  <option value="">--- Chọn dữ liệu mẫu ---</option>
+                  <option value="iris">Iris Flower (Phân loại)</option>
+                  <option value="wine">Wine Dataset (Phân loại)</option>
+                  <option value="clusters">Synthetic Clusters 2D (Phân loại)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h2 class="section-title"><i class="fa-solid fa-sliders accent-color"></i> 2. Cấu hình Naïve Bayes</h2>
+
+            <!-- Label target select -->
+            <div class="form-group">
+              <label for="nb-target-select">Chọn Label cần dự đoán (Y):</label>
+              <div class="select-wrapper">
+                <select id="nb-target-select" disabled>
+                  <option value="">Nạp dữ liệu để chọn...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Feature checkbox checklist -->
+            <div class="form-group">
+              <label>Chọn các đặc trưng đầu vào (X):</label>
+              <div class="features-checklist-container" id="nb-features-container">
+                <p class="empty-state">Vui lòng nạp dữ liệu...</p>
+              </div>
+            </div>
+
+            <!-- Naive Bayes parameters -->
+            <div class="params-grid">
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="nb-smoothing-input">Hệ số làm mịn (Smoothing ε):</label>
+                <input type="number" id="nb-smoothing-input" value="1e-9" min="0" step="1e-12">
+              </div>
+            </div>
+
+            <!-- NB Type selector -->
+            <div class="form-group">
+              <label>Loại Naïve Bayes:</label>
+              <div class="select-wrapper">
+                <select id="nb-type-select">
+                  <option value="gaussian">Gaussian NB (dữ liệu số)</option>
+                  <option value="text">Multinomial NB (văn bản / TXT)</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Column 2: Query Inputs & Results -->
+          <section class="card query-results-card">
+            <h2 class="section-title"><i class="fa-solid fa-keyboard accent-color"></i> 3. Nhập đầu vào &amp; Dự đoán</h2>
+            <p class="click-tip" id="nb-click-tip"><i class="fa-solid fa-lightbulb"></i> Mẹo: Click chuột trực tiếp lên biểu đồ ở góc phải để chọn tọa độ nhanh!</p>
+
+            <!-- predict / predict_proba Toggle -->
+            <div class="proba-toggle-group">
+              <button class="proba-toggle-btn active" id="nb-toggle-predict" onclick="nbSetPredictMode('predict')">
+                <i class="fa-solid fa-tag"></i> Dự đoán nhãn
+              </button>
+              <button class="proba-toggle-btn" id="nb-toggle-proba" onclick="nbSetPredictMode('proba')">
+                <i class="fa-solid fa-chart-bar"></i> Xác suất (predict_proba)
+              </button>
+            </div>
+
+            <!-- Numeric input form -->
+            <div class="query-inputs-wrapper" id="nb-query-inputs-container">
+              <p class="empty-state">Chưa chọn Feature nào. Vui lòng chọn Feature ở cột 1.</p>
+            </div>
+
+            <!-- Text input area (Multinomial NB) -->
+            <div id="nb-text-input-wrapper" style="display:none;">
+              <label style="font-size:11px;font-weight:600;color:var(--color-text-muted);display:block;margin-bottom:5px;">
+                <i class="fa-solid fa-align-left" style="color:var(--color-accent);"></i>
+                Nhập văn bản cần phân loại:
+              </label>
+              <textarea id="nb-text-input" class="nb-text-input-area" placeholder="Nhập văn bản vào đây để dự đoán..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <button id="nb-btn-predict" class="btn-success btn-large" disabled>
+              <i class="fa-solid fa-play"></i> Dự Đoán (Naïve Bayes)
+            </button>
+
+            <!-- Result banner display -->
+            <div class="result-banner empty" id="nb-result-banner">
+              <h3 id="nb-result-title">Chưa có dự đoán</h3>
+              <p id="nb-result-description">Nạp dữ liệu mẫu hoặc chọn file, cấu hình tham số đầu vào và click 'Dự đoán'.</p>
+            </div>
+
+            <!-- Probabilities table -->
+            <h3 class="subsection-title">Xác suất hậu nghiệm các lớp (predict_proba):</h3>
+            <div class="table-container small-table-container">
+              <table id="nb-probabilities-table">
+                <thead>
+                  <tr>
+                    <th>Lớp</th>
+                    <th>Log-Likelihood</th>
+                    <th>Xác suất (%)</th>
+                    <th>Phân phối</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="4" class="text-center font-muted">Nạp dữ liệu và dự đoán để hiển thị...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- predict_proba Bar Chart -->
+            <div id="nb-proba-chart-container">
+              <canvas id="nb-proba-chart" height="110"></canvas>
+            </div>
+          </section>
+
+          <!-- Column 3: Visualization Plots -->
+          <section class="card visualizer-card">
+            <div class="visualizer-header">
+              <h2 class="section-title"><i class="fa-solid fa-chart-pie accent-color"></i> 4. Trực quan hóa dữ liệu (2D)</h2>
+              <div class="plot-axis-selectors" id="nb-axis-selectors">
+                <div class="axis-group">
+                  <label for="nb-plot-x-select">Trục X:</label>
+                  <div class="select-wrapper mini-select">
+                    <select id="nb-plot-x-select" disabled></select>
+                  </div>
+                </div>
+                <div class="axis-group">
+                  <label for="nb-plot-y-select">Trục Y:</label>
+                  <div class="select-wrapper mini-select">
+                    <select id="nb-plot-y-select" disabled></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Inner Tab Group (Chart vs Raw Data Table) -->
+            <div class="visual-tabs">
+              <button class="visual-tab-btn active" data-visual-tab="nb-visual-chart">
+                <i class="fa-solid fa-chart-scatter"></i> Biểu đồ phân bố
+              </button>
+              <button class="visual-tab-btn" data-visual-tab="nb-visual-data">
+                <i class="fa-solid fa-table"></i> Bảng dữ liệu gốc
+              </button>
+            </div>
+
+            <!-- Chart Tab Pane -->
+            <div id="nb-visual-chart" class="visual-tab-content active">
+              <div class="canvas-wrapper">
+                <canvas id="nb-scatter-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Data Grid Tab Pane -->
+            <div id="nb-visual-data" class="visual-tab-content">
+              <div class="table-controls">
+                <input type="text" id="nb-search-data" placeholder="Tìm kiếm giá trị trong bảng...">
+                <div id="nb-data-pagination-info" class="pagination-info">Hiển thị 0/0 dòng</div>
+              </div>
+              <div class="table-container large-table-container">
+                <table id="nb-raw-data-table">
+                  <thead>
+                    <tr>
+                      <th>Chưa nạp dữ liệu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="text-center font-muted">Nhập dữ liệu để bắt đầu...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div class="card-footer" id="nb-data-size-status">
+              Kích thước: 0 dòng x 0 cột
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- PAGE 2: MODEL EVALUATION -->
+      <div id="nb-tab-evaluation" class="page-content">
+        <div class="grid-two-cols">
+          
+          <!-- Eval Left Pane: Split Config & Evaluation Output -->
+          <section class="card eval-left-card">
+            <h2 class="section-title"><i class="fa-solid fa-gauge accent-color"></i> Đánh giá hiệu năng mô hình</h2>
+            
+            <!-- Split ratio slider -->
+            <div class="form-group">
+              <div class="slider-header">
+                <label for="nb-split-slider">Tỷ lệ chia tập huấn luyện (Train Split %):</label>
+                <span class="slider-val" id="nb-split-val-label">80% Train / 20% Test</span>
+              </div>
+              <input type="range" id="nb-split-slider" min="50" max="95" step="5" value="80" class="custom-slider">
+            </div>
+
+            <!-- Seed input -->
+            <div class="form-group inline-group">
+              <label for="nb-seed-input">Số ngẫu nhiên (Random State seed):</label>
+              <input type="number" id="nb-seed-input" value="42" style="width: 100px;">
+            </div>
+
+            <!-- Run Eval Button -->
+            <button id="nb-btn-run-eval" class="btn-primary btn-large" disabled>
+              <i class="fa-solid fa-arrows-spin"></i> Chạy Đánh Giá (Train-Test Evaluation)
+            </button>
+
+            <div class="eval-status-message error" id="nb-eval-status-msg">
+              Hãy nạp dữ liệu trước khi chạy đánh giá.
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Evaluation Scores cards -->
+            <h3 class="subsection-title">Các chỉ số đo lường hiệu năng:</h3>
+            <div class="metrics-cards-container" id="nb-metrics-output-container">
+              <div class="empty-metrics-state">
+                <p><i class="fa-solid fa-hourglass-start fa-2x"></i></p>
+                <p>Chưa chạy đánh giá mô hình. Vui lòng bấm 'Chạy Đánh Giá' ở trên.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Eval Right Pane: Charts / Confusion Matrix -->
+          <section class="card eval-right-card">
+            <h2 class="section-title"><i class="fa-solid fa-chart-area accent-color"></i> Biểu đồ phân tích kết quả đánh giá</h2>
+            
+            <div class="eval-chart-wrapper" id="nb-eval-chart-container">
+              <div class="canvas-wrapper" id="nb-eval-canvas-parent">
+                <canvas id="nb-eval-chart"></canvas>
+              </div>
+              <div id="nb-confusion-matrix-wrapper" style="display: none;">
+                <!-- Dynamic HTML Confusion Matrix table will be populated here -->
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Preset script contains embedded static datasets -->
+  <script src="presets.js"></script>
+  <!-- Application logic script -->
+  <script src="app.js"></script>
+  <!-- Naive Bayes extensions: TXT, Multinomial NB, predict_proba chart -->
+  <script src="nb-extensions.js"></script>
+</body>
+</html>
